@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 # -------------------------------
 
 # Using individual parameters (no URL encoding needed!)
-DB_HOST = "db.esidxhoexoglzfyqxwyf.supabase.co:5432/postgres"  # Your Supabase host
+DB_HOST = "db.esidxhoexoglzfyqxwyf.supabase.co"  # Your Supabase host
 DB_NAME = "postgres"
 DB_USER = "postgres"
 DB_PASSWORD = "B&@T5Fiy?5B/kE."  # Your actual password (no encoding needed!)
