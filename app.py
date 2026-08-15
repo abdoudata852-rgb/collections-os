@@ -1,75 +1,105 @@
 # collections_os/app.py
-# A simple Collections Management System for beginners.
+# Collections Management System with PostgreSQL (Supabase)
 
-# 1. IMPORT THE MAGIC LIBRARIES
-import streamlit as st          # Makes the web interface
-import pandas as pd             # Helps us work with tables like Excel
-import sqlite3                  # The built-in database (no installation needed)
-from datetime import datetime, timedelta  # For calculating dates
-import random                   # Just to generate fake IDs for now
+import streamlit as st
+import pandas as pd
+import psycopg2
+from datetime import datetime, timedelta
 
 # -------------------------------
-# 2. SETUP THE DATABASE (SQLite)
+# 1. CONNECT TO SUPABASE (PostgreSQL)
 # -------------------------------
-# This creates a file called 'collections.db' in your folder.
-conn = sqlite3.connect('collections.db', check_same_thread=False)
-c = conn.cursor()
+# IMPORTANT: Replace YOUR_CONNECTION_STRING with your actual Supabase connection string
+# Example: postgresql://postgres:yourpassword@db.abcdefg.supabase.co:5432/postgres
 
-# Create the 3 tables if they don't exist yet.
-c.execute('''CREATE TABLE IF NOT EXISTS customers
-             (id INTEGER PRIMARY KEY, full_name TEXT, phone TEXT, email TEXT)''')
+DATABASE_URL = "postgresql://postgres:B&@T5Fiy?5B/kE.@db.esidxhoexoglzfyqxwyf.supabase.co:5432/postgres"
 
-c.execute('''CREATE TABLE IF NOT EXISTS loans
-             (id INTEGER PRIMARY KEY, 
-              customer_id INTEGER, 
-              loan_letter TEXT, 
-              principal REAL, 
-              start_date TEXT, 
-              frequency TEXT)''')  # 'Weekly' or 'Monthly'
+def get_connection():
+    """Create a connection to Supabase"""
+    return psycopg2.connect(DATABASE_URL)
 
-c.execute('''CREATE TABLE IF NOT EXISTS payments
-             (id INTEGER PRIMARY KEY, 
-              loan_id INTEGER, 
-              amount REAL, 
-              payment_date TEXT)''')
-conn.commit()
+# Create tables if they don't exist
+def init_database():
+    conn = get_connection()
+    c = conn.cursor()
+    
+    # Create customers table
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS customers (
+            id SERIAL PRIMARY KEY,
+            full_name TEXT NOT NULL,
+            phone TEXT,
+            email TEXT
+        )
+    ''')
+    
+    # Create loans table
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS loans (
+            id SERIAL PRIMARY KEY,
+            customer_id INTEGER REFERENCES customers(id) ON DELETE CASCADE,
+            loan_letter TEXT,
+            principal REAL,
+            start_date DATE,
+            frequency TEXT
+        )
+    ''')
+    
+    # Create payments table
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS payments (
+            id SERIAL PRIMARY KEY,
+            loan_id INTEGER REFERENCES loans(id) ON DELETE CASCADE,
+            amount REAL,
+            payment_date DATE
+        )
+    ''')
+    
+    conn.commit()
+    conn.close()
+
+# Initialize database
+init_database()
 
 # -------------------------------
-# 3. HELPER FUNCTIONS (The Business Logic)
+# 2. HELPER FUNCTIONS (Business Logic)
 # -------------------------------
 
-# Get the next available loan letter (A, B, C...) for a customer
 def get_next_letter(customer_id):
-    c.execute("SELECT loan_letter FROM loans WHERE customer_id = ?", (customer_id,))
+    """Get the next available loan letter (A, B, C...) for a customer"""
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("SELECT loan_letter FROM loans WHERE customer_id = %s", (customer_id,))
     used = [row[0] for row in c.fetchall()]
+    conn.close()
+    
     alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     for letter in alphabet:
         if letter not in used:
             return letter
     return "Z"  # Too many loans!
 
-# Calculate Total Due (Principal + 20% interest)
 def calculate_total_due(principal):
+    """Calculate Total Due (Principal + 20% interest)"""
     return principal * 1.20
 
-# Calculate Next Due Date (Start Date + 7 days or 1 month)
 def calculate_next_due(start_date, frequency):
+    """Calculate Next Due Date (Start Date + 7 days or 1 month)"""
     date_obj = datetime.strptime(start_date, "%Y-%m-%d")
     if frequency == "Weekly":
         return (date_obj + timedelta(days=7)).strftime("%Y-%m-%d")
     else:  # Monthly
-        # Add ~30 days for simplicity
         return (date_obj + timedelta(days=30)).strftime("%Y-%m-%d")
 
 # -------------------------------
-# 4. THE MAIN STREAMLIT APP INTERFACE
+# 3. MAIN STREAMLIT APP
 # -------------------------------
 
 st.set_page_config(page_title="Collections OS", layout="wide")
 st.title("📊 Collections OS - Loan Manager")
 
 # --- SIDEBAR: Navigation ---
-menu = st.sidebar.radio("Navigate", ["➕ New Customer", "💰 New Loan", "💵 Record Payment", "📋 Dashboard"])
+menu = st.sidebar.radio("Navigate", ["➕ New Customer", "💰 New Loan", "💵 Record Payment", "🗑️ Delete Loan", "📋 Dashboard"])
 
 # --- PAGE 1: Add Customer ---
 if menu == "➕ New Customer":
@@ -80,23 +110,27 @@ if menu == "➕ New Customer":
         email = st.text_input("Email")
         submitted = st.form_submit_button("Save Customer")
         if submitted and name:
-            c.execute("INSERT INTO customers (full_name, phone, email) VALUES (?,?,?)", (name, phone, email))
+            conn = get_connection()
+            c = conn.cursor()
+            c.execute("INSERT INTO customers (full_name, phone, email) VALUES (%s, %s, %s)", (name, phone, email))
             conn.commit()
+            conn.close()
             st.success(f"✅ Customer '{name}' added!")
 
 # --- PAGE 2: Add Loan ---
 elif menu == "💰 New Loan":
     st.header("Create a New Loan")
     
-    # Dropdown to pick existing customer
+    conn = get_connection()
     customers_df = pd.read_sql("SELECT id, full_name FROM customers", conn)
+    conn.close()
+    
     if customers_df.empty:
         st.warning("Please add a customer first.")
     else:
-        # 🔥 NEW: Add a search box!
+        # Search box for customers
         search_term = st.text_input("🔍 Search for a customer (type their name)", "")
         
-        # Filter customers based on search
         if search_term:
             filtered_df = customers_df[customers_df['full_name'].str.contains(search_term, case=False)]
         else:
@@ -124,10 +158,15 @@ elif menu == "💰 New Loan":
                     total_due = calculate_total_due(principal)
                     next_due = calculate_next_due(start_date.strftime("%Y-%m-%d"), frequency)
                     
-                    # Save to DB
-                    c.execute("INSERT INTO loans (customer_id, loan_letter, principal, start_date, frequency) VALUES (?,?,?,?,?)", 
-                              (customer_id, next_letter, principal, start_date, frequency))
+                    # Save to database
+                    conn = get_connection()
+                    c = conn.cursor()
+                    c.execute(
+                        "INSERT INTO loans (customer_id, loan_letter, principal, start_date, frequency) VALUES (%s, %s, %s, %s, %s)",
+                        (customer_id, next_letter, principal, start_date, frequency)
+                    )
                     conn.commit()
+                    conn.close()
                     
                     st.success(f"✅ Loan {selected_customer}-Loan{next_letter} created!")
                     st.metric("Total Due (incl. 20% interest)", f"${total_due:,.2f}")
@@ -137,11 +176,17 @@ elif menu == "💰 New Loan":
 elif menu == "💵 Record Payment":
     st.header("Record a Payment")
     
-    loans_df = pd.read_sql("SELECT l.id, c.full_name, l.loan_letter FROM loans l JOIN customers c ON l.customer_id = c.id", conn)
+    conn = get_connection()
+    loans_df = pd.read_sql("""
+        SELECT l.id, c.full_name, l.loan_letter 
+        FROM loans l 
+        JOIN customers c ON l.customer_id = c.id
+    """, conn)
+    conn.close()
+    
     if loans_df.empty:
         st.warning("No loans exist yet.")
     else:
-        # Create a nice label like "John Doe - Loan A"
         loans_df['label'] = loans_df['full_name'] + " - Loan" + loans_df['loan_letter']
         loan_dict = dict(zip(loans_df['label'], loans_df['id']))
         
@@ -154,16 +199,60 @@ elif menu == "💵 Record Payment":
             submitted = st.form_submit_button("Record Payment")
             
             if submitted and amount > 0:
-                c.execute("INSERT INTO payments (loan_id, amount, payment_date) VALUES (?,?,?)", 
-                          (loan_id, amount, payment_date))
+                conn = get_connection()
+                c = conn.cursor()
+                c.execute(
+                    "INSERT INTO payments (loan_id, amount, payment_date) VALUES (%s, %s, %s)",
+                    (loan_id, amount, payment_date)
+                )
                 conn.commit()
+                conn.close()
                 st.success("✅ Payment recorded successfully!")
 
-# --- PAGE 4: The Dashboard ---
+# --- PAGE 4: Delete Loan ---
+elif menu == "🗑️ Delete Loan":
+    st.header("🗑️ Delete a Loan")
+    st.warning("⚠️ This action cannot be undone! Only delete loans that were created by mistake.")
+    
+    conn = get_connection()
+    loans_df = pd.read_sql("""
+        SELECT l.id, c.full_name, l.loan_letter, l.principal 
+        FROM loans l 
+        JOIN customers c ON l.customer_id = c.id
+    """, conn)
+    conn.close()
+    
+    if loans_df.empty:
+        st.info("No loans to delete.")
+    else:
+        loans_df['label'] = loans_df['full_name'] + " - Loan" + loans_df['loan_letter'] + " ($" + loans_df['principal'].astype(str) + ")"
+        loan_dict = dict(zip(loans_df['label'], loans_df['id']))
+        
+        selected_loan = st.selectbox("Select loan to delete", list(loan_dict.keys()))
+        loan_id = loan_dict[selected_loan]
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🗑️ Delete This Loan", type="primary"):
+                conn = get_connection()
+                c = conn.cursor()
+                c.execute("DELETE FROM loans WHERE id = %s", (loan_id,))
+                conn.commit()
+                conn.close()
+                st.success(f"✅ {selected_loan} has been deleted!")
+                st.rerun()
+        
+        with col2:
+            if st.button("❌ Cancel"):
+                st.info("Deletion cancelled.")
+
+# --- PAGE 5: Dashboard ---
 elif menu == "📋 Dashboard":
     st.header("Loan Dashboard")
     
-    # 1. Get all data with SQL Joins (matching the spec)
+    conn = get_connection()
+    
+    # Get all data with SQL Joins
     query = """
     SELECT 
         c.full_name as Customer,
@@ -177,21 +266,20 @@ elif menu == "📋 Dashboard":
     FROM loans l
     JOIN customers c ON l.customer_id = c.id
     LEFT JOIN payments p ON l.id = p.loan_id
-    GROUP BY l.id
+    GROUP BY l.id, c.full_name, l.loan_letter, l.principal, l.start_date, l.frequency
     """
     df = pd.read_sql(query, conn)
+    conn.close()
     
     if df.empty:
         st.info("No loans to show. Start by adding a customer and a loan!")
     else:
-        # Calculate "Days Until Due" (using Start Date + Frequency)
-        # This is a simplified dynamic calc for the dashboard
+        # Calculate "Days Until Due" and Status
         today = datetime.today().date()
         def calculate_status(row):
             if row['Remaining_Balance'] <= 0:
                 return "✅ Paid Off"
             
-            # Calculate next due date roughly
             start = datetime.strptime(row['Start_Date'], "%Y-%m-%d").date()
             if row['Frequency'] == "Weekly":
                 next_due = start + timedelta(days=7)
@@ -209,7 +297,7 @@ elif menu == "📋 Dashboard":
         
         df['Status'] = df.apply(calculate_status, axis=1)
         
-        # Display the table
+        # Display the table with updated width parameter
         st.dataframe(df[['Customer', 'Loan', 'Total_Due', 'Total_Paid', 'Remaining_Balance', 'Status']], use_container_width=True)
         
         # --- WIDGETS (Top Metrics) ---
@@ -217,11 +305,11 @@ elif menu == "📋 Dashboard":
         col1.metric("💰 Total Outstanding", f"${df['Remaining_Balance'].sum():,.2f}")
         col2.metric("📌 Overdue Loans", df[df['Status'] == '🚨 Overdue'].shape[0])
         col3.metric("✅ Active Loans", df[df['Status'] != '✅ Paid Off'].shape[0])
+        col4.metric("📊 Total Loans", df.shape[0])
         
-        # Show customers list too
+        # Show customers list
         st.subheader("Customers")
+        conn = get_connection()
         customers_df = pd.read_sql("SELECT id, full_name, phone FROM customers", conn)
-        st.dataframe(customers_df)
-
-# Close DB connection when app stops (good practice)
-# (Streamlit handles this, but we keep it clean)
+        conn.close()
+        st.dataframe(customers_df, use_container_width=True)
