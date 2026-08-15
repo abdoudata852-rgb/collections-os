@@ -9,14 +9,22 @@ from datetime import datetime, timedelta
 # -------------------------------
 # 1. CONNECT TO SUPABASE (PostgreSQL)
 # -------------------------------
-# IMPORTANT: Replace YOUR_CONNECTION_STRING with your actual Supabase connection string
-# Example: postgresql://postgres:yourpassword@db.abcdefg.supabase.co:5432/postgres
 
-DATABASE_URL = "postgresql://postgres:B%26%40T5Fiy%3F5B%2FkE.@db.esidxhoexoglzfyqxwyf.supabase.co:5432/postgres"
+# Using individual parameters (no URL encoding needed!)
+DB_HOST = "db.esidxhoexoglzfyqxwyf.supabase.co:5432/postgres"  # Your Supabase host
+DB_NAME = "postgres"
+DB_USER = "postgres"
+DB_PASSWORD = "B&@T5Fiy?5B/kE."  # Your actual password (no encoding needed!)
 
 def get_connection():
     """Create a connection to Supabase"""
-    return psycopg2.connect(DATABASE_URL)
+    return psycopg2.connect(
+        host=DB_HOST,
+        database=DB_NAME,
+        user=DB_USER,
+        password=DB_PASSWORD,
+        port=5432
+    )
 
 # Create tables if they don't exist
 def init_database():
