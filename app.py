@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 # -------------------------------
 
 # Using individual parameters (no URL encoding needed!)
-DB_HOST = "db.esidxhoexoglzfyqxwyf.supabase.co"  # Your Supabase host
+DB_HOST = "aws-0-ap-south-1.pooler.supabase.com"  # Your Supabase host
 DB_NAME = "postgres"
 DB_USER = "postgres"
 DB_PASSWORD = "199200@fcbarca"  # Your actual password (no encoding needed!)
@@ -23,7 +23,7 @@ def get_connection():
         database=DB_NAME,
         user=DB_USER,
         password=DB_PASSWORD,
-        port=5432,
+        port=6543,  # Changed from 5432 to 6543 for pooler!
         sslmode='require'  # Required for Supabase
     )
 
