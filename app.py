@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 DB_HOST = "db.esidxhoexoglzfyqxwyf.supabase.co"  # Your Supabase host
 DB_NAME = "postgres"
 DB_USER = "postgres"
-DB_PASSWORD = "B&@T5Fiy?5B/kE."  # Your actual password (no encoding needed!)
+DB_PASSWORD = "199200@fcbarca"  # Your actual password (no encoding needed!)
 
 def get_connection():
     """Create a connection to Supabase"""
@@ -23,7 +23,8 @@ def get_connection():
         database=DB_NAME,
         user=DB_USER,
         password=DB_PASSWORD,
-        port=5432
+        port=5432,
+        sslmode='require'  # Required for Supabase
     )
 
 # Create tables if they don't exist
