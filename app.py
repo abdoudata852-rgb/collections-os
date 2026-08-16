@@ -10,12 +10,12 @@ from datetime import datetime, timedelta
 # 1. CONNECT TO SUPABASE (PostgreSQL)
 # -------------------------------
 
-# Using direct connection with IPv4 address from pooler
-# This bypasses the pooler's tenant identifier requirement
-DB_HOST = "44.208.221.186"  # IPv4 address from nslookup
+# DIRECT CONNECTION (using the hostname, NOT the pooler/IPs)
+# This will use IPv6 on Streamlit Cloud's servers.
+DB_HOST = "db.ovqaiwlhtzmiaxglhxwv.supabase.co"  # Your new project's host
 DB_NAME = "postgres"
 DB_USER = "postgres"
-DB_PASSWORD = "199200@fcbarca"  # Your password from the new Supabase project
+DB_PASSWORD = "199200@fcbarca"  # <-- REPLACE WITH YOUR NEW PASSWORD!
 
 def get_connection():
     """Create a connection to Supabase"""
@@ -24,7 +24,7 @@ def get_connection():
         database=DB_NAME,
         user=DB_USER,
         password=DB_PASSWORD,
-        port=5432,  # Direct connection port (not pooler)
+        port=5432,  # Standard PostgreSQL port
         sslmode='require'
     )
 # Create tables if they don't exist
