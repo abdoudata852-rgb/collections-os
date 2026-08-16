@@ -10,8 +10,8 @@ from datetime import datetime, timedelta
 # 1. CONNECT TO SUPABASE (PostgreSQL)
 # -------------------------------
 
-# Direct connection (not pooler)
-DB_HOST = "db.esidxhoexoglzfyqxwyf.supabase.co"  # Your direct host
+# Using the pooler hostname (should resolve to IPv4)
+DB_HOST = "aws-0-ap-south-1.pooler.supabase.com"
 DB_NAME = "postgres"
 DB_USER = "postgres"
 DB_PASSWORD = "199200@fcbarca"  # Your password
@@ -21,9 +21,9 @@ def get_connection():
     return psycopg2.connect(
         host=DB_HOST,
         database=DB_NAME,
-        user=DB_USER,  # Just "postgres" for direct connection
+        user=DB_USER,
         password=DB_PASSWORD,
-        port=5432,  # Direct connection uses port 5432
+        port=6543,
         sslmode='require'
     )
 # Create tables if they don't exist
