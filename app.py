@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 # -------------------------------
 
 # Using pooler IP without SSL
-DB_HOST = "3.111.105.85"
+DB_HOST = "65.0.195.55"
 DB_NAME = "postgres"
 DB_USER = "postgres"
 DB_PASSWORD = "199200@fcbarca"
