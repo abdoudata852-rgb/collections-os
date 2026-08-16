@@ -10,11 +10,14 @@ from datetime import datetime, timedelta
 # 1. CONNECT TO SUPABASE (PostgreSQL)
 # -------------------------------
 
-# Using pooler IP without SSL
-DB_HOST = "65.0.195.55"
+# NEW Supabase project (US East) with pooler IPv4
+# Using IP address from nslookup (you can also use the hostname)
+DB_HOST = "44.208.221.186"  # Using the first IPv4 address
+# You can also try: "52.45.94.125" or "44.216.29.125" if this one doesn't work
+
 DB_NAME = "postgres"
 DB_USER = "postgres"
-DB_PASSWORD = "199200@fcbarca"
+DB_PASSWORD = "199200@fcbarca"  # REPLACE with the password you created!
 
 def get_connection():
     """Create a connection to Supabase"""
@@ -23,8 +26,8 @@ def get_connection():
         database=DB_NAME,
         user=DB_USER,
         password=DB_PASSWORD,
-        port=6543,
-        sslmode='disable'  # Try without SSL
+        port=6543,  # Pooler port
+        sslmode='require'
     )
 # Create tables if they don't exist
 def init_database():
