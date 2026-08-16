@@ -10,25 +10,21 @@ from datetime import datetime, timedelta
 # 1. CONNECT TO SUPABASE (PostgreSQL)
 # -------------------------------
 
-# Using the pooler with the correct username format
-DB_HOST = "aws-0-ap-south-1.pooler.supabase.com"
+# Using pooler IP without SSL
+DB_HOST = "3.111.105.85"
 DB_NAME = "postgres"
 DB_USER = "postgres"
-DB_PASSWORD = "199200@fcbarca"  # Your password
-DB_PORT = 6543
-
-# Your project reference (from the URL)
-PROJECT_REF = "esidxhoexoglzfyqxwyf"  # <-- REPLACE with YOUR project ref!
+DB_PASSWORD = "199200@fcbarca"
 
 def get_connection():
     """Create a connection to Supabase"""
     return psycopg2.connect(
         host=DB_HOST,
         database=DB_NAME,
-        user=f"{PROJECT_REF}.{DB_USER}",  # <-- THIS IS THE FIX!
+        user=DB_USER,
         password=DB_PASSWORD,
-        port=DB_PORT,
-        sslmode='require'
+        port=5432,
+        sslmode='disable'  # Try without SSL
     )
 # Create tables if they don't exist
 def init_database():
